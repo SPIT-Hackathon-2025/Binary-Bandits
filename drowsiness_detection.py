@@ -1,9 +1,8 @@
 import sys
 import cv2
-import dlib
-import imutils
+import numpy as np
+import mediapipe as mp
 from scipy.spatial import distance
-from imutils import face_utils
 from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
@@ -13,13 +12,15 @@ class DrowsinessDetectionApp(QWidget):
         super().__init__()
         self.init_ui()
         self.cap = cv2.VideoCapture(0)
-        self.detect = dlib.get_frontal_face_detector()
-        self.predict = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
-        self.lStart, self.lEnd = face_utils.FACIAL_LANDMARKS_68_IDXS["left_eye"]
-        self.rStart, self.rEnd = face_utils.FACIAL_LANDMARKS_68_IDXS["right_eye"]
-        self.flag = 0
+        self.mp_face_mesh = mp.solutions.face_mesh
+        self.face_mesh = self.mp_face_mesh.FaceMesh(refine_landmarks=True)
+        self.eye_landmarks = {
+            'left': [33, 160, 158, 133, 153, 144],
+            'right': [362, 385, 387, 263, 373, 380]
+        }
         self.thresh = 0.25
         self.frame_check = 20
+        self.flag = 0
         self.timer = QTimer()
         self.timer.timeout.connect(self.process_frame)
 
@@ -50,28 +51,34 @@ class DrowsinessDetectionApp(QWidget):
         self.timer.stop()
         self.cap.release()
         cv2.destroyAllWindows()
+        sys.exit(app.exec())
 
     def process_frame(self):
         ret, frame = self.cap.read()
         if not ret:
             return
-        frame = imutils.resize(frame, width=450)
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        subjects = self.detect(gray, 0)
-        for subject in subjects:
-            shape = self.predict(gray, subject)
-            shape = face_utils.shape_to_np(shape)
-            leftEye = shape[self.lStart:self.lEnd]
-            rightEye = shape[self.rStart:self.rEnd]
-            leftEAR = self.eye_aspect_ratio(leftEye)
-            rightEAR = self.eye_aspect_ratio(rightEye)
-            ear = (leftEAR + rightEAR) / 2.0
-            if ear < self.thresh:
-                self.flag += 1
-                if self.flag >= self.frame_check:
-                    cv2.putText(frame, "ALERT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-            else:
-                self.flag = 0
+        frame = cv2.flip(frame, 1)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.face_mesh.process(rgb_frame)
+
+        if results.multi_face_landmarks:
+            for face_landmarks in results.multi_face_landmarks:
+                leftEye = np.array([[face_landmarks.landmark[i].x * frame.shape[1],
+                                     face_landmarks.landmark[i].y * frame.shape[0]]
+                                    for i in self.eye_landmarks['left']])
+                rightEye = np.array([[face_landmarks.landmark[i].x * frame.shape[1],
+                                      face_landmarks.landmark[i].y * frame.shape[0]]
+                                     for i in self.eye_landmarks['right']])
+                leftEAR = self.eye_aspect_ratio(leftEye)
+                rightEAR = self.eye_aspect_ratio(rightEye)
+                ear = (leftEAR + rightEAR) / 2.0
+
+                if ear < self.thresh:
+                    self.flag += 1
+                    if self.flag >= self.frame_check:
+                        cv2.putText(frame, "ALERT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                else:
+                    self.flag = 0
         self.display_frame(frame)
     
     def display_frame(self, frame):

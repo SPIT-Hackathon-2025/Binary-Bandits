@@ -31,6 +31,10 @@ class MultiFunctionApp(QWidget):
         self.ocr_btn = QPushButton("License Plate Detection", self)
         self.ocr_btn.clicked.connect(lambda: self.run_script("ocr_detection.py"))
         layout.addWidget(self.ocr_btn)
+
+        self.drowsiness_btn = QPushButton("Drowsiness Detection", self)
+        self.drowsiness_btn.clicked.connect(lambda: self.run_script("drowsiness_detection.py"))
+        layout.addWidget(self.drowsiness_btn)
         
         self.setLayout(layout)
 
