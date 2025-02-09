@@ -1,15 +1,24 @@
-clc;
-close all;
-clear all;
+clc;        % Clear command window
+clear;      % Clear workspace
+close all;  % Close all figures
 
-%reads image 
-im = imread("C:\Users\91750\Downloads\OCR_Test_4_crop.jpg");   
+a = imread("C:\Users\91750\Downloads\OCR_Test_2.jpg");
 
-%resizes the image
+
+% Convert image to grayscale
+a = rgb2gray(a);
+figure, imshow(a), title('Car Image');
+
+% Extract lower part of the image (Assuming license plate is at bottom)
+[r, c, ~] = size(a);
+b = a(floor(r / 3):r, 1:c);
+figure, imshow(b), title('License Plate Area');
+
+im=b
 im = imresize(im, [480 NaN]);
 
 %displays original image
-imshow(im),title("Original Image");
+% imshow(im),title("Original Image");
 imgray=im
 %converts to grayscale
 %imgray = rgb2gray(im);
@@ -97,7 +106,3 @@ for i=1:count
        noPlate=[noPlate letter] % Appending every subsequent character in noPlate variable.
    end
 end
-
-
-
-
