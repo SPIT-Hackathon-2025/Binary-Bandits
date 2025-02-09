@@ -1,4 +1,4 @@
-im1 = imread(['test7.jpeg']);
+im1 = imread(["C:\Users\91750\Downloads\OCR_Test_3.jpeg"]);
 imgray = rgb2gray(im1);
 imbin = im2bw(imgray);
 im = edge(imgray, 'prewitt');
