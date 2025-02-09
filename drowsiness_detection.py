@@ -2,6 +2,10 @@ import sys
 import cv2
 import numpy as np
 import mediapipe as mp
+import pyttsx3
+import threading
+import time
+import winsound
 from scipy.spatial import distance
 from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QVBoxLayout, QWidget
 from PyQt6.QtGui import QImage, QPixmap
@@ -21,8 +25,11 @@ class DrowsinessDetectionApp(QWidget):
         self.thresh = 0.25
         self.frame_check = 20
         self.flag = 0
+        self.alert_active = False
         self.timer = QTimer()
         self.timer.timeout.connect(self.process_frame)
+        self.engine = pyttsx3.init()
+        self.engine.setProperty('rate', 150)
 
     def init_ui(self):
         self.label = QLabel(self)
@@ -51,7 +58,17 @@ class DrowsinessDetectionApp(QWidget):
         self.timer.stop()
         self.cap.release()
         cv2.destroyAllWindows()
-        sys.exit(app.exec())
+        sys.exit()
+
+    def alert(self):
+        if not self.alert_active:
+            self.alert_active = True
+            while self.flag >= self.frame_check:
+                self.engine.say("ALERT")
+                self.engine.runAndWait()
+                winsound.Beep(1000, 500)  # Beep sound after ALERT audio
+                time.sleep(0.5)
+            self.alert_active = False
 
     def process_frame(self):
         ret, frame = self.cap.read()
@@ -77,6 +94,8 @@ class DrowsinessDetectionApp(QWidget):
                     self.flag += 1
                     if self.flag >= self.frame_check:
                         cv2.putText(frame, "ALERT!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                        if not self.alert_active:
+                            threading.Thread(target=self.alert, daemon=True).start()
                 else:
                     self.flag = 0
         self.display_frame(frame)
